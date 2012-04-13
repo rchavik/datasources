@@ -20,9 +20,9 @@
 App::uses('NativeDriverSource', 'Datasources.Model/Datasource');
 
 /**
- * MS SQL layer for DBO
+ * MS SQL layer without DBO
  *
- * Long description for class
+ * Uses mssql instead of PDO::sqlsrv. Requires the `mssql` extension to be enabled.
  *
  * @package       cake
  * @subpackage    cake.cake.libs.model.datasources.dbo
@@ -34,7 +34,7 @@ class Mssql extends NativeDriverSource {
  *
  * @var string
  */
-	public $description = "MS SQL DBO Driver";
+	public $description = "MS SQL Driver";
 
 /**
  * Starting quote character for quoted identifiers
@@ -56,7 +56,7 @@ class Mssql extends NativeDriverSource {
  *
  * @var array
  */
-	protected $__fieldMappings = array();
+	protected $_fieldMappings = array();
 
 /**
  * Base configuration settings for MS SQL driver
@@ -109,7 +109,7 @@ class Mssql extends NativeDriverSource {
  * @var string
  * @access private
  */
-	protected $__lastQueryHadError = false;
+	protected $_lastQueryHadError = false;
 /**
  * MS SQL DBO driver constructor; sets SQL Server error reporting defaults
  *
@@ -145,7 +145,7 @@ class Mssql extends NativeDriverSource {
 
 		if (is_numeric($config['port'])) {
 			$port = $sep . $config['port'];	// Port number
-		} elseif ($config['port'] === null) {
+		} elseif ($config['port'] === null || $config['port'] === false) {
 			$port = '';						// No port - SQL Server 2005
 		} else {
 			$port = '\\' . $config['port'];	// Named pipe
@@ -192,7 +192,10 @@ class Mssql extends NativeDriverSource {
  */
 	protected function _execute($sql) {
 		$result = @mssql_query($sql, $this->connection);
-		$this->__lastQueryHadError = ($result === false);
+		$this->_lastQueryHadError = ($result === false);
+		if ($this->_lastQueryHadError) {
+			throw new InternalErrorException($this->lastError());
+		}
 		return $result;
 	}
 
@@ -264,7 +267,7 @@ class Mssql extends NativeDriverSource {
 				$fields[$field]['length'] = null;
 			}
 		}
-		$this->__cacheDescription($this->fullTableName($model, false, false), $fields);
+		$this->_cacheDescription($this->fullTableName($model, false, false), $fields);
 		return $fields;
 	}
 
@@ -335,7 +338,7 @@ class Mssql extends NativeDriverSource {
 					$prepend = 'DISTINCT ';
 					$fields[$i] = trim(str_replace('DISTINCT', '', $fields[$i]));
 				}
-				$fieldAlias = count($this->__fieldMappings);
+				$fieldAlias = count($this->_fieldMappings);
 
 				if (!preg_match('/\s+AS\s+/i', $fields[$i])) {
 					if (substr($fields[$i], -1) == '*') {
@@ -352,12 +355,12 @@ class Mssql extends NativeDriverSource {
 					}
 
 					if (strpos($fields[$i], '.') === false) {
-						$this->__fieldMappings[$alias . '__' . $fieldAlias] = $alias . '.' . $fields[$i];
+						$this->_fieldMappings[$alias . '__' . $fieldAlias] = $alias . '.' . $fields[$i];
 						$fieldName  = $this->name($alias . '.' . $fields[$i]);
 						$fieldAlias = $this->name($alias . '__' . $fieldAlias);
 					} else {
 						$build = explode('.', $fields[$i]);
-						$this->__fieldMappings[$build[0] . '__' . $fieldAlias] = $fields[$i];
+						$this->_fieldMappings[$build[0] . '__' . $fieldAlias] = $fields[$i];
 						$fieldName  = $this->name($build[0] . '.' . $build[1]);
 						$fieldAlias = $this->name(preg_replace("/^\[(.+)\]$/", "$1", $build[0]) . '__' . $fieldAlias);
 					}
@@ -434,7 +437,7 @@ class Mssql extends NativeDriverSource {
  * @return string Error message with error number
  */
 	public function lastError() {
-		if ($this->__lastQueryHadError) {
+		if ($this->_lastQueryHadError) {
 			$error = mssql_get_last_message();
 			if ($error && !preg_match('/contexto de la base de datos a|contesto di database|changed database|contexte de la base de don|datenbankkontext/i', $error)) {
 				return $error;
@@ -563,10 +566,10 @@ class Mssql extends NativeDriverSource {
 			$column = mssql_field_name($results, $j);
 
 			if (strpos($column, '__')) {
-				if (isset($this->__fieldMappings[$column]) && strpos($this->__fieldMappings[$column], '.')) {
-					$map = explode('.', $this->__fieldMappings[$column]);
-				} elseif (isset($this->__fieldMappings[$column])) {
-					$map = array(0, $this->__fieldMappings[$column]);
+				if (isset($this->_fieldMappings[$column]) && strpos($this->_fieldMappings[$column], '.')) {
+					$map = explode('.', $this->_fieldMappings[$column]);
+				} elseif (isset($this->_fieldMappings[$column])) {
+					$map = array(0, $this->_fieldMappings[$column]);
 				} else {
 					$map = array(0, $column);
 				}
@@ -601,7 +604,7 @@ class Mssql extends NativeDriverSource {
 					preg_match('/top\s+([0-9]+)/i', $limit, $limitVal);
 					$offset = intval($offset[1]) + intval($limitVal[1]);
 					$rOrder = $this->__switchSort($order);
-					list($order2, $rOrder) = array($this->__mapFields($order), $this->__mapFields($rOrder));
+					list($order2, $rOrder) = array($this->_mapFields($order), $this->_mapFields($rOrder));
 					return "SELECT * FROM (SELECT {$limit} * FROM (SELECT TOP {$offset} {$fields} FROM {$table} {$alias} {$joins} {$conditions} {$group} {$order}) AS Set1 {$rOrder}) AS Set2 {$order2}";
 				} else {
 					return "SELECT {$limit} {$fields} FROM {$table} {$alias} {$joins} {$conditions} {$group} {$order}";
@@ -650,11 +653,11 @@ class Mssql extends NativeDriverSource {
  * @return string The value of $sql with field names replaced
  * @access private
  */
-	protected function __mapFields($sql) {
-		if (empty($sql) || empty($this->__fieldMappings)) {
+	protected function _mapFields($sql) {
+		if (empty($sql) || empty($this->_fieldMappings)) {
 			return $sql;
 		}
-		foreach ($this->__fieldMappings as $key => $val) {
+		foreach ($this->_fieldMappings as $key => $val) {
 			$sql = preg_replace('/' . preg_quote($val) . '/', $this->name($key), $sql);
 			$sql = preg_replace('/' . preg_quote($this->name($val)) . '/', $this->name($key), $sql);
 		}
@@ -671,7 +674,7 @@ class Mssql extends NativeDriverSource {
  */
 	public function read(&$model, $queryData = array(), $recursive = null) {
 		$results = parent::read($model, $queryData, $recursive);
-		$this->__fieldMappings = array();
+		$this->_fieldMappings = array();
 		return $results;
 	}
 
@@ -687,6 +690,13 @@ class Mssql extends NativeDriverSource {
 
 			foreach ($row as $index => $field) {
 				list($table, $column) = $this->map[$index];
+				/*
+				if (is_string($row[$index])) {
+					//$currentEncoding = mb_detect_encoding($row[$index], 'auto');
+					//echo returns($currentEncoding);
+					$row[$index] = utf8_encode($row[$index]); // iconv($currentEncoding, 'UTF-8', $row[$index]);
+				}
+				*/				
 				$resultRow[$table][$column] = $row[$index];
 				$i++;
 			}
