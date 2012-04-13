@@ -132,13 +132,13 @@ class NativeDriverSource extends DboSource {
  * @return mixed
  * @access private
  */
-	protected function __cacheDescription($object, $data = null) {
+	protected function _cacheDescription($object, $data = null) {
 		if ($this->cacheSources === false) {
 			return null;
 		}
 
 		if ($data !== null) {
-			$this->__descriptions[$object] =& $data;
+			$this->_descriptions[$object] =& $data;
 		}
 
 		$key = ConnectionManager::getSourceName($this) . '_' . $object;
