@@ -232,7 +232,7 @@ class Mssql extends NativeDriverSource {
  * @param Model $model Model object to describe
  * @return array Fields in table. Keys are name and type
  */
-	public function describe(&$model) {
+	public function describe(Model $model) {
 		$cache = parent::describe($model);
 
 		if ($cache != null) {
@@ -322,7 +322,7 @@ class Mssql extends NativeDriverSource {
  * @param mixed $fields
  * @return array
  */
-	public function fields(&$model, $alias = null, $fields = array(), $quote = true) {
+	public function fields(Model $model, $alias = null, $fields = array(), $quote = true) {
 		if (empty($alias)) {
 			$alias = $model->alias;
 		}
@@ -388,7 +388,7 @@ class Mssql extends NativeDriverSource {
  * @param mixed $conditions
  * @return array
  */
-	public function create(&$model, $fields = null, $values = null) {
+	public function create(Model $model, $fields = null, $values = null) {
 		if (!empty($values)) {
 			$fields = array_combine($fields, $values);
 		}
@@ -418,7 +418,7 @@ class Mssql extends NativeDriverSource {
  * @param mixed $conditions
  * @return array
  */
-	public function update(&$model, $fields = array(), $values = null, $conditions = null) {
+	public function update(Model $model, $fields = array(), $values = null, $conditions = null) {
 		if (!empty($values)) {
 			$fields = array_combine($fields, $values);
 		}
@@ -672,7 +672,7 @@ class Mssql extends NativeDriverSource {
  * @param boolean $cache Enables returning/storing cached query results
  * @return array Array of resultset rows, or false if no rows matched
  */
-	public function read(&$model, $queryData = array(), $recursive = null) {
+	public function read(Model $model, $queryData = array(), $recursive = null) {
 		$results = parent::read($model, $queryData, $recursive);
 		$this->_fieldMappings = array();
 		return $results;
@@ -733,7 +733,7 @@ class Mssql extends NativeDriverSource {
 		$result = preg_replace('/(int|integer)\([0-9]+\)/i', '$1', parent::buildColumn($column));
 		if (strpos($result, 'DEFAULT NULL') !== false) {
 			$result = str_replace('DEFAULT NULL', 'NULL', $result);
-		} else if (array_keys($column) == array('type', 'name')) {
+		} elseif (array_keys($column) == array('type', 'name')) {
 			$result .= ' NULL';
 		}
 		return $result;
@@ -752,7 +752,7 @@ class Mssql extends NativeDriverSource {
 		foreach ($indexes as $name => $value) {
 			if ($name == 'PRIMARY') {
 				$join[] = 'PRIMARY KEY (' . $this->name($value['column']) . ')';
-			} else if (isset($value['unique']) && $value['unique']) {
+			} elseif (isset($value['unique']) && $value['unique']) {
 				$out = "ALTER TABLE {$table} ADD CONSTRAINT {$name} UNIQUE";
 
 				if (is_array($value['column'])) {
@@ -774,13 +774,8 @@ class Mssql extends NativeDriverSource {
  * @access protected
  * @return string
  */
-	protected function _getPrimaryKey($model) {
-		if (is_object($model)) {
-			$schema = $model->schema();
-		} else {
-			$schema = $this->describe($model);
-		}
-
+	protected function _getPrimaryKey(Model $model) {
+		$schema = $this->describe($model);
 		foreach ($schema as $field => $props) {
 			if (isset($props['key']) && $props['key'] == 'primary') {
 				return $field;
