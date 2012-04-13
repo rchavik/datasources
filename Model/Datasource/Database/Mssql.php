@@ -689,14 +689,7 @@ class Mssql extends NativeDriverSource {
 			$i = 0;
 
 			foreach ($row as $index => $field) {
-				list($table, $column) = $this->map[$index];
-				/*
-				if (is_string($row[$index])) {
-					//$currentEncoding = mb_detect_encoding($row[$index], 'auto');
-					//echo returns($currentEncoding);
-					$row[$index] = utf8_encode($row[$index]); // iconv($currentEncoding, 'UTF-8', $row[$index]);
-				}
-				*/				
+				list($table, $column) = $this->map[$index];			
 				$resultRow[$table][$column] = $row[$index];
 				$i++;
 			}
